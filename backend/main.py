@@ -22,7 +22,7 @@ def get_reaction(reactivoA: str, reactivoB: str):
         r = requests.post(
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {key}"},
-            json={"model": "mixtral-8x7b-32768", "messages": [{"role": "user", "content": prompt}]}
+            json={"model": "llama-3.3-70b-versatile", "messages": [{"role": "user", "content": prompt}]}
         )
         data = r.json()
         # Aquí validamos que 'choices' exista para evitar el error
