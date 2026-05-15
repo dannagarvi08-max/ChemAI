@@ -1,50 +1,54 @@
-import requests
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+import os
+import requests
+from dotenv import load_dotenv
+
+# Cargamos las variables de entorno (como tu API Key)
+load_dotenv()
 
 app = FastAPI()
 
+# --- CONFIGURACIÓN DE CORS (PERMISOS DE CONEXIÓN) ---
+# Esto es lo que permite que tu página en Vercel hable con este servidor en Render
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # Permite conexiones de cualquier origen
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Permite todos los métodos (GET, POST, etc.)
+    allow_headers=["*"],  # Permite todos los encabezados
 )
 
-# PEGA TU LLAVE DE GROQ AQUÍ
-GROQ_API_KEY = "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"
-URL = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
+@app.get("/")
+def home():
+    return {"mensaje": "Servidor Químico de ChemAI funcionando"}
 
 @app.get("/reaction")
-async def get_reaction(mol1: str, mol2: str):
-    prompt = f"""
-    Actúa como un ingeniero químico experto. Analiza la reacción entre {mol1} y {mol2}.
-    Responde con este formato exacto:
-    PRODUCTO: (Ecuación balanceada)
-    MECANISMO: (Paso a paso breve)
-    ESTRUCTURA: (Carbonos, Hidrógenos y Grupo Funcional de cada una)
-    USOS: (2 usos industriales)
-    """
-    
-    headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    
-    payload = {
-        "model": "llama-3.3-70b-versatile",
-        "messages": [{"role": "user", "content": prompt}]
-    }
-    
+def get_reaction(reactivoA: str, reactivoB: str):
+    if not GROQ_API_KEY:
+        return {"resultado": "Error: No se configuró la API Key en Render."}
+
+    # El "prompt" que le enviamos a la IA
+    prompt = (
+        f"Eres un experto en ingeniería química de la UIS. "
+        f"Analiza la reacción química entre {reactivoA} y {reactivoB}. "
+        f"Proporciona la ecuación balanceada, el tipo de reacción y una breve explicación estequiométrica."
+    )
+
     try:
-        response = requests.post(URL, headers=headers, json=payload)
+        response = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+            json={
+                "model": "mixtral-8x7b-32768",
+                "messages": [{"role": "user", "content": prompt}]
+            }
+        )
         data = response.json()
-        
-        if "choices" in data:
-            return {"result": data["choices"][0]["message"]["content"]}
-        else:
-            return {"result": f"Error de Groq: {data.get('error', {}).get('message', 'Error desconocido')}"}
-            
+        resultado_ia = data['choices'][0]['message']['content']
+        return {"resultado": resultado_ia}
     except Exception as e:
-        return {"result": f"Error de conexión: {str(e)}"}
+        return {"resultado": f"Error al procesar con la IA: {str(e)}"}
