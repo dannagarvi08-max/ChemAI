@@ -17,17 +17,19 @@ app.add_middleware(
 def get_reaction(reactivoA: str, reactivoB: str):
     key = os.getenv("GROQ_API_KEY")
     
-    # Hemos mejorado el prompt para que sea un informe profesional de la UIS
+    # PROMPT REFORZADO: Aquí le obligamos a seguir el formato UIS
     prompt = (
-        f"Actúa como un sistema experto en Ingeniería Química de la UIS. "
+        f"Eres un sistema experto en Ingeniería Química de la UIS. "
         f"Analiza la reacción entre {reactivoA} y {reactivoB}. "
-        f"Tu respuesta DEBE seguir este formato estricto:\n\n"
-        f"INFORME DE LABORATORIO VIRTUAL:\n"
-        f"**Análisis de la reacción entre {reactivoA} y {reactivoB}**\n\n"
-        f"**PRODUCTO:** (Ecuación química balanceada)\n\n"
-        f"**MECANISMO:** (Pasos de la reacción)\n\n"
-        f"**ESTRUCTURA:** (Descripción de enlaces y moléculas)\n\n"
-        f"**USOS:** (Aplicaciones industriales)"
+        f"REGLA CRÍTICA: No des respuestas cortas. Debes generar un INFORME DE LABORATORIO VIRTUAL "
+        f"con las siguientes secciones marcadas en negrita:\n\n"
+        f"1. **INFORME DE LABORATORIO VIRTUAL**\n"
+        f"2. **Análisis de la reacción entre {reactivoA} y {reactivoB}**\n"
+        f"3. **PRODUCTO:** Muestra la ecuación química balanceada detallada.\n"
+        f"4. **MECANISMO:** Explica paso a paso cómo se rompen y forman los enlaces.\n"
+        f"5. **ESTRUCTURA:** Describe la geometría molecular y los tipos de enlaces de los reactivos y productos.\n"
+        f"6. **USOS:** Explica al menos 2 aplicaciones industriales importantes de esta reacción.\n\n"
+        f"Usa un tono técnico y profesional."
     )
     
     try:
@@ -35,8 +37,12 @@ def get_reaction(reactivoA: str, reactivoB: str):
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {key}"},
             json={
-                "model": "llama-3.3-70b-versatile", # Corregido: ya no está duplicado
-                "messages": [{"role": "user", "content": prompt}]
+                "model": "llama-3.3-70b-versatile",
+                "messages": [
+                    {"role": "system", "content": "Eres un asistente que solo genera informes técnicos de laboratorio detallados para ingenieros químicos."},
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 0.7 # Añadimos temperatura para que sea más creativo y detallado
             }
         )
         data = r.json()
@@ -44,7 +50,6 @@ def get_reaction(reactivoA: str, reactivoB: str):
         if "choices" in data:
             return {"resultado": data["choices"][0]["message"]["content"]}
         else:
-            # Esto te dirá exactamente qué dice Groq si algo falla
-            return {"resultado": f"Error de la IA: {data.get('error', {}).get('message', 'Llave o modelo inválido')}"}
+            return {"resultado": f"Error de la IA: {data.get('error', {}).get('message', 'Error desconocido')}"}
     except Exception as e:
         return {"resultado": f"Error del servidor: {str(e)}"}
