@@ -16,19 +16,35 @@ app.add_middleware(
 @app.get("/reaction")
 def get_reaction(reactivoA: str, reactivoB: str):
     key = os.getenv("GROQ_API_KEY")
-    prompt = f"Analiza la reacción química entre {reactivoA} y {reactivoB}. Ecuación balanceada y estequiometría corta."
+    
+    # Hemos mejorado el prompt para que sea un informe profesional de la UIS
+    prompt = (
+        f"Actúa como un sistema experto en Ingeniería Química de la UIS. "
+        f"Analiza la reacción entre {reactivoA} y {reactivoB}. "
+        f"Tu respuesta DEBE seguir este formato estricto:\n\n"
+        f"INFORME DE LABORATORIO VIRTUAL:\n"
+        f"**Análisis de la reacción entre {reactivoA} y {reactivoB}**\n\n"
+        f"**PRODUCTO:** (Ecuación química balanceada)\n\n"
+        f"**MECANISMO:** (Pasos de la reacción)\n\n"
+        f"**ESTRUCTURA:** (Descripción de enlaces y moléculas)\n\n"
+        f"**USOS:** (Aplicaciones industriales)"
+    )
     
     try:
         r = requests.post(
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {key}"},
-            json={"model": "llama-3.3-70b-versatile", "messages": [{"role": "user", "content": prompt}]}
+            json={
+                "model": "llama-3.3-70b-versatile", # Corregido: ya no está duplicado
+                "messages": [{"role": "user", "content": prompt}]
+            }
         )
         data = r.json()
-        # Aquí validamos que 'choices' exista para evitar el error
+        
         if "choices" in data:
             return {"resultado": data["choices"][0]["message"]["content"]}
         else:
-            return {"resultado": f"Error de la IA: {data.get('error', {}).get('message', 'Llave inválida')}"}
+            # Esto te dirá exactamente qué dice Groq si algo falla
+            return {"resultado": f"Error de la IA: {data.get('error', {}).get('message', 'Llave o modelo inválido')}"}
     except Exception as e:
-        return {"resultado": f"Error: {str(e)}"}
+        return {"resultado": f"Error del servidor: {str(e)}"}
